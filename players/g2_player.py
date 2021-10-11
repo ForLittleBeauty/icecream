@@ -23,24 +23,21 @@ class Player:
         score = 0
         max_i = -1
         max_j = -1
+        print(top_layer)
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
-                spoon_level = [curr_level[i,j],curr_level[i+1,j],curr_level[i,j+1],curr_level[i+1,j+1]]
-                # if we choose this, our turn will be terminated,
-                # unless it is the last step, we can use state to optimize.
-                # like when 20<state<24, we can spoon 0 if the total 4 can give us greatest score.
-                lowest_level = min(spoon_level)
-                if lowest_level == 0:
-                    continue
-                else:
-                    level_can_get = [(level-lowest_level) for level in spoon_level]
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
+                spots = [(i,j),(i+1,j),(i,j+1),(i+1,j+1)]
+                spoon_level = [curr_level[spots[0]],curr_level[spots[1]],curr_level[spots[2]],curr_level[spots[3]]]
+                reachable_level = max(spoon_level)
                 curr_score = 0
-                for index,flavor in enumerate(curr_flavors):
-                    if level_can_get == 0:
-                        continue
-                    else:
-                        curr_score += (12-self.flavor_preference.index(flavor))
+                if reachable_level <= 0:
+                    continue
+                for i in range(len(spots)):
+                    tup = spots[i]
+                    if(spoon_level[i]==reachable_level):
+                        curr_score += (len(self.flavor_preference) - self.flavor_preference.index(top_layer[tup]))
+
                 if curr_score>score:
                     score=curr_score
                     max_i=i
