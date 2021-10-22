@@ -36,7 +36,7 @@ class Player:
         two_units = []
         three_units = []
         four_units = []
-
+        empty = 0
         # Loop through every possible 2x2 square on the grid
         for i in range(top_layer.shape[0]-1):
             for j in range(top_layer.shape[1]-1):
@@ -44,6 +44,7 @@ class Player:
 
                 highest_level = max(spoon_level)
                 if highest_level < 0: # zero will get no score and -1 will get terminated, so we skip
+                    empty = empty + 1
                     continue
                 curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
                 curr_score = 0
@@ -53,38 +54,129 @@ class Player:
                         cell_counter+=1
                        # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
                         curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
+                        if(highest_level == 0):
+                            curr_score = curr_score - 0.5 # so less preferable than matching scores,
+                                                          # but still more preferable than lower scores
 
 
                 if cell_counter == 1:
-                    one_unit.append((i,j,curr_score))
+                    one_unit.append((i,j,curr_score, cell_counter))
                 elif cell_counter == 2:
-                    two_units.append((i,j,curr_score))
+                    two_units.append((i,j,curr_score, cell_counter))
                 elif cell_counter == 3:
-                    three_units.append((i,j,curr_score))
+                    three_units.append((i,j,curr_score, cell_counter))
                 else:
-                    four_units.append((i,j,curr_score))
+                    four_units.append((i,j,curr_score, cell_counter))
+        #if(empty > 250):
+        if not four_units: #methodology below might not pan out with anything useful and we are likely near game end
+            return self.get_highest_score2(top_layer, curr_level)
 
-        
         one_unit.sort(key=lambda x: x[2], reverse=True)
         two_units.sort(key=lambda x: x[2], reverse=True)
         three_units.sort(key=lambda x: x[2], reverse=True)
         four_units.sort(key=lambda x: x[2], reverse=True)
 
-        map = {}
+        if len(one_unit) > 20:
+            one_unit = one_unit[0::20]
+        if len(two_units) > 20:
+            two_units = two_units[0::20]
+        if len(three_units) > 20:
+            three_units = three_units[0::20]
+
+        valid_fours = []
         if four_units:
-            map[four_units[0][2]] = [(four_units[0][0], four_units[0][1], 4)]
-        if three_units and one_unit:
-            score = three_units[0][2] + one_unit[0][2]
-            map[score] = [(three_units[0][0], three_units[0][1], 3), (one_unit[0][0], one_unit[0][1], 1)]     
-        if len(two_units) >= 2:
-            score = two_units[0][2] + two_units[1][2]
-            map[score] = [(two_units[0][0], two_units[0][1], 2),(two_units[1][0], two_units[1][1], 2)]
-        if two_units and len(one_unit) >= 2:
-            score = two_units[0][2] + one_unit[0][2] + one_unit[1][2]
-            map[score] = [(two_units[0][0], two_units[0][1], 2),(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1)]
-        if len(one_unit) >= 4:
-            score = one_unit[0][2] + one_unit[1][2] + one_unit[2][2] + one_unit[3][2]
-            map[score] = [(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1),(one_unit[2][0], one_unit[2][1], 1),(one_unit[3][0], one_unit[3][1], 1)]
+            valid_fours.append([four_units[0]])
+
+        valid_three_one = []
+        for th in three_units:
+            for on in one_unit:
+                if(abs(on[0]-th[0]) <2 or abs(on[1]-th[1]) <2):
+                    continue
+                valid_three_one.append([th, on])
+
+        valid_two_two = []
+        for i in range(len(two_units)):
+            for j in range(i+1, len(two_units)):
+                a = two_units[i]
+                b= two_units[j]
+                if (abs(a[0] - b[0]) < 2 or abs(a[1] - b[1]) < 2):
+                    continue
+                valid_two_two.append([a,b])
+
+        valid_two_one_one = []
+        for a in two_units:
+            for i in range(len(one_unit)):
+                for j in range(i+1,len(one_unit)):
+                    b = one_unit[i]
+                    c = one_unit[j]
+                    if abs(a[0] - b[0]) < 2 or abs(a[1] - b[1]) < 2:
+                        continue
+                    if abs(a[0] - c[0]) < 2 or abs(a[1] - c[1]) < 2:
+                        continue
+                    if abs(b[0] - c[0]) < 2 or abs(b[1] - c[1]) < 2: #risk of same scoop from two sides
+                        continue
+                    valid_two_one_one.append([a,b,c])
+
+        valid_all_ones = []
+        for i in range(len(one_unit)):
+            for j in range(i+1, len(one_unit)):
+                for k in range (j+1, len(one_unit)):
+                    for l in range(k+1, len(one_unit)):
+                        a = one_unit[i]
+                        b = one_unit[j]
+                        c =one_unit[k]
+                        d = one_unit[l]
+                        leave = False
+                        opt = [a,b,c,d]
+                        for r in range(len(opt)):
+                            for s in range(r+1,len(opt)):
+                                opt_1 = opt[r]
+                                opt_2 = opt[s]
+                                if abs(opt_1[0] - opt_2[0]) < 2 or abs(opt_1[1] - opt_2[1]) < 2:
+                                    leave = True
+                        if leave:
+                            continue
+                        valid_all_ones.append([a,b,c,d])
+
+        map = {}
+        valid = valid_fours + valid_three_one + valid_two_two + valid_two_one_one + valid_all_ones
+        #since will iterate through in order ties broken by cleaning up brooken fragments
+        for v in valid:
+            score = 0
+            instruct = []
+            while len(v) > 0:
+                e = v.pop()
+                score = score+e[2]
+                instruct.append((e[0], e[1], e[3]))
+            map[score] = instruct
+
+
+
+
+        '''
+        one_unit.sort(key=lambda x: x[2], reverse=True)
+        two_units.sort(key=lambda x: x[2], reverse=True)
+        three_units.sort(key=lambda x: x[2], reverse=True)
+        four_units.sort(key=lambda x: x[2], reverse=True)
+
+
+        i = 0
+
+            if four_units:
+                map[four_units[0][2]] = [(four_units[0][0], four_units[0][1], 4)]
+            if three_units and one_unit:
+                score = three_units[0][2] + one_unit[0][2]
+                map[score] = [(three_units[0][0], three_units[0][1], 3), (one_unit[0][0], one_unit[0][1], 1)]
+            if len(two_units) >= 2:
+                score = two_units[0][2] + two_units[1][2]
+                map[score] = [(two_units[0][0], two_units[0][1], 2),(two_units[1][0], two_units[1][1], 2)]
+            if two_units and len(one_unit) >= 2:
+                score = two_units[0][2] + one_unit[0][2] + one_unit[1][2]
+                map[score] = [(two_units[0][0], two_units[0][1], 2),(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1)]
+            if len(one_unit) >= 4:
+                score = one_unit[0][2] + one_unit[1][2] + one_unit[2][2] + one_unit[3][2]
+                map[score] = [(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1),(one_unit[2][0], one_unit[2][1], 1),(one_unit[3][0], one_unit[3][1], 1)]
+        '''
 
         max_score = max(map.keys())
         self.instructions = map[max_score]
