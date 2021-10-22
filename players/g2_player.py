@@ -17,9 +17,84 @@ class Player:
         self.rng = rng
         self.logger = logger
         self.state = 0
+        self.instructions = []
         #self.turns = 0
 
     def get_highest_score(self,top_layer,curr_level):
+        
+        if self.instructions:
+            print(self.instructions)
+            move = self.instructions.pop()
+            self.update_state(move[2])
+            return (move[0], move[1])
+
+        # Starting a new turn, we can scoop 24 units of ice cream
+        if self.state == 0:
+            self.state = 24
+        
+        one_unit = []
+        two_units = []
+        three_units = []
+        four_units = []
+
+        # Loop through every possible 2x2 square on the grid
+        for i in range(top_layer.shape[0]-1):
+            for j in range(top_layer.shape[1]-1):
+                spoon_level = [curr_level[i,j],curr_level[i+1,j],curr_level[i,j+1],curr_level[i+1,j+1]]
+
+                highest_level = max(spoon_level)
+                if highest_level < 0: # zero will get no score and -1 will get terminated, so we skip
+                    continue
+                curr_flavors = [top_layer[i,j],top_layer[i+1,j],top_layer[i,j+1],top_layer[i+1,j+1]]
+                curr_score = 0
+                cell_counter = 0
+                for index,flavor in enumerate(curr_flavors):
+                    if spoon_level[index] == highest_level:
+                        cell_counter+=1
+                       # Total amount of flavors - index of this flavor (index 0 subtracts zero so player gets full points)
+                        curr_score += (len(self.flavor_preference)-self.flavor_preference.index(flavor))
+
+
+                if cell_counter == 1:
+                    one_unit.append((i,j,curr_score))
+                elif cell_counter == 2:
+                    two_units.append((i,j,curr_score))
+                elif cell_counter == 3:
+                    three_units.append((i,j,curr_score))
+                else:
+                    four_units.append((i,j,curr_score))
+
+        
+        one_unit.sort(key=lambda x: x[2], reverse=True)
+        two_units.sort(key=lambda x: x[2], reverse=True)
+        three_units.sort(key=lambda x: x[2], reverse=True)
+        four_units.sort(key=lambda x: x[2], reverse=True)
+
+        map = {}
+        if four_units:
+            map[four_units[0][2]] = [(four_units[0][0], four_units[0][1], 4)]
+        if three_units and one_unit:
+            score = three_units[0][2] + one_unit[0][2]
+            map[score] = [(three_units[0][0], three_units[0][1], 3), (one_unit[0][0], one_unit[0][1], 1)]     
+        if len(two_units) >= 2:
+            score = two_units[0][2] + two_units[1][2]
+            map[score] = [(two_units[0][0], two_units[0][1], 2),(two_units[1][0], two_units[1][1], 2)]
+        if two_units and len(one_unit) >= 2:
+            score = two_units[0][2] + one_unit[0][2] + one_unit[1][2]
+            map[score] = [(two_units[0][0], two_units[0][1], 2),(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1)]
+        if len(one_unit) >= 4:
+            score = one_unit[0][2] + one_unit[1][2] + one_unit[2][2] + one_unit[3][2]
+            map[score] = [(one_unit[0][0], one_unit[0][1], 1),(one_unit[1][0], one_unit[1][1], 1),(one_unit[2][0], one_unit[2][1], 1),(one_unit[3][0], one_unit[3][1], 1)]
+
+        max_score = max(map.keys())
+        self.instructions = map[max_score]
+        print(self.instructions)
+        move = self.instructions.pop()
+        self.update_state(move[2])
+        return (move[0], move[1])
+        
+    
+    def get_highest_score2(self,top_layer,curr_level):
         
         # Starting a new turn, we can scoop 24 units of ice cream
         if self.state == 0:
